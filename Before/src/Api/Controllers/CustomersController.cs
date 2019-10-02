@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CSharpFunctionalExtensions;
 using Logic.Dtos;
 using Logic.Entities;
 using Logic.Repositories;
@@ -90,7 +91,7 @@ namespace Api.Controllers
                     return BadRequest(result.Error);
                 }
 
-                if (_customerRepository.GetByEmail(item.Email) != null)
+                if (_customerRepository.GetByEmail(emailOrError.Value) != null)
                 {
                     return BadRequest("Email is already in use: " + item.Email);
                 }
