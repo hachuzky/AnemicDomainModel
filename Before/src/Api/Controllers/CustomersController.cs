@@ -102,7 +102,7 @@ namespace Api.Controllers
                     Name = customerNameOrError.Value,
                     Email = emailOrError.Value,
                     MoneySpent = Dollars.Of(0),
-                    StatusExpirationDate = null
+                    StatusExpirationDate = ExpirationDate.Infinite
                 };
 
                 _customerRepository.Add(customer);
@@ -164,7 +164,8 @@ namespace Api.Controllers
                     return BadRequest("Invalid customer id: " + id);
                 }
 
-                if (customer.PurchasedMovies.Any(x => x.MovieId == movie.Id && (x.ExpirationDate == null || x.ExpirationDate.Value >= DateTime.UtcNow)))
+                if (customer.PurchasedMovies.Any(
+                    x => x.MovieId == movie.Id && (x.ExpirationDate == null || x.ExpirationDate.Date >= DateTime.UtcNow)))
                 {
                     return BadRequest("The movie is already purchased: " + movie.Name);
                 }
@@ -193,7 +194,7 @@ namespace Api.Controllers
                     return BadRequest("Invalid customer id: " + id);
                 }
 
-                if (customer.Status == CustomerStatus.Advanced && (customer.StatusExpirationDate == null || customer.StatusExpirationDate.Value < DateTime.UtcNow))
+                if (customer.Status == CustomerStatus.Advanced && !customer.StatusExpirationDate.IsExpired)
                 {
                     return BadRequest("The customer already has the Advanced status");
                 }
