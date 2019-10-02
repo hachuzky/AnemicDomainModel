@@ -8,19 +8,25 @@ namespace Logic.Entities
         private string _name;
         public virtual CustomerName Name 
         { 
-            get => CustomerName.Create(_name).Value; 
-            set => _name = value.Value; 
+            get => (CustomerName)_name; 
+            set => _name = value; 
         }
 
         private string _email;
+
         public virtual Email Email 
         {
-            get => Email.Create(_email).Value;
-            set => _email = value.Value;
+            get => (Email)_email;
+            set => _email = value;
         }
         public virtual CustomerStatus Status { get; set; }
         public virtual DateTime? StatusExpirationDate { get; set; }
-        public virtual decimal MoneySpent { get; set; }
+
+        private decimal _moneySpent;
+        public virtual Dollars MoneySpent {
+            get => Dollars.Of(_moneySpent); 
+            set => _moneySpent = value; 
+        }
         public virtual IList<PurchasedMovie> PurchasedMovies { get; set; }
     }
 }
