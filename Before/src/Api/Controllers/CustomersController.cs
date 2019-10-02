@@ -37,8 +37,8 @@ namespace Api.Controllers
             var dto = new CustomerDto
             {
                 Id = customer.Id,
-                Name = customer.Name,
-                Email = customer.Email,
+                Name = customer.Name.Value,
+                Email = customer.Email.Value,
                 MoneySpent = customer.MoneySpent,
                 Status = customer.Status.ToString(),
                 StatusExpirationDate = customer.StatusExpirationDate,
@@ -66,8 +66,8 @@ namespace Api.Controllers
             List <CustomerInListDto> dtos = customers.Select(customer => new CustomerInListDto
             {
                 Id = customer.Id,
-                Name = customer.Name,
-                Email = customer.Email,
+                Name = customer.Name.Value,
+                Email = customer.Email.Value,
                 MoneySpent = customer.MoneySpent,
                 Status = customer.Status.ToString(),
                 StatusExpirationDate = customer.StatusExpirationDate
@@ -81,9 +81,13 @@ namespace Api.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
+                Result<CustomerName> customerNameOrError = CustomerName.Create(item.Name);
+                Result<Email> emailOrError = Email.Create(item.Email);
+
+                Result result  = Result.Combine(customerNameOrError, emailOrError);
+                if(!result.IsSuccess)
                 {
-                    return BadRequest(ModelState);
+                    return BadRequest(result.Error);
                 }
 
                 if (_customerRepository.GetByEmail(item.Email) != null)
@@ -94,8 +98,8 @@ namespace Api.Controllers
                 var customer = new Customer
                 {
                     Status = CustomerStatus.Regular,
-                    Name = item.Name,
-                    Email = item.Email,
+                    Name = customerNameOrError.Value,
+                    Email = emailOrError.Value,
                     MoneySpent = 0,
                     StatusExpirationDate = null
                 };
@@ -117,9 +121,11 @@ namespace Api.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
+                Result<CustomerName> customerNameOrError = CustomerName.Create(item.Name);
+
+                if (customerNameOrError.IsFailure)
                 {
-                    return BadRequest(ModelState);
+                    return BadRequest(customerNameOrError.Value);
                 }
 
                 Customer customer = _customerRepository.GetById(id);
@@ -128,7 +134,7 @@ namespace Api.Controllers
                     return BadRequest("Invalid customer id: " + id);
                 }
 
-                customer.Name = item.Name;
+                customer.Name = customerNameOrError.Value;
                 _customerRepository.SaveChanges();
 
                 return Ok();
