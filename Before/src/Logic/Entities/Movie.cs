@@ -3,41 +3,45 @@ using System;
 
 namespace Logic.Entities
 {
-    public class Movie : Entity
+    public abstract class Movie : Entity
     {
         public virtual string Name { get; protected set; }
-        public virtual LicensingModel LicensingModel { get; protected set; }
+        protected virtual LicensingModel LicensingModel { get; set; }
 
-        public virtual ExpirationDate GetExpirationDate()
-        {
-            switch (LicensingModel)
-            {
-                case LicensingModel.TwoDays:
-                    return (ExpirationDate)DateTime.UtcNow.AddDays(2);
-
-                case LicensingModel.LifeLong:
-                    return ExpirationDate.Infinite;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
+        public abstract ExpirationDate GetExpirationDate();
 
         public virtual Dollars CalculatePrice(CustomerStatus status)
         {
             decimal modifier = 1 - status.GetDiscount();
+            return GetBasePrice() * modifier;
+        }
 
-            switch (LicensingModel)
-            {
-                case LicensingModel.TwoDays:
-                    return Dollars.Of(4) * modifier;
+        protected abstract Dollars GetBasePrice();
+    }
 
-                case LicensingModel.LifeLong:
-                    return Dollars.Of(8) * modifier;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+    public class TwoDaysMovie : Movie
+    {
+        protected override Dollars GetBasePrice()
+        {
+            return Dollars.Of(4);
+        }
+        public override ExpirationDate GetExpirationDate()
+        {
+            return (ExpirationDate)DateTime.UtcNow.AddDays(2);
         }
     }
+
+    public class LifeLongMovie : Movie
+    {
+        protected override Dollars GetBasePrice()
+        {
+            return Dollars.Of(8);
+        }
+
+        public override ExpirationDate GetExpirationDate()
+        {
+            return ExpirationDate.Infinite;
+        }
+    }
+
 }
