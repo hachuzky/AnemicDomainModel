@@ -5,7 +5,6 @@ using CSharpFunctionalExtensions;
 using Logic.Dtos;
 using Logic.Entities;
 using Logic.Repositories;
-using Logic.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
@@ -15,13 +14,11 @@ namespace Api.Controllers
     {
         private readonly MovieRepository _movieRepository;
         private readonly CustomerRepository _customerRepository;
-        private readonly CustomerService _customerService;
 
-        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository, CustomerService customerService)
+        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository)
         {
             _customerRepository = customerRepository;
             _movieRepository = movieRepository;
-            _customerService = customerService;
         }
 
         [HttpGet]
@@ -155,14 +152,14 @@ namespace Api.Controllers
                 {
                     return BadRequest("Invalid customer id: " + id);
                 }
-
+                
                 if (customer.PurchasedMovies.Any(
-                    x => x.MovieId == movie.Id && (x.ExpirationDate == null || x.ExpirationDate.Date >= DateTime.UtcNow)))
+                    x => x.Movie.Id == movie.Id && (x.ExpirationDate == null || x.ExpirationDate.Date >= DateTime.UtcNow)))
                 {
                     return BadRequest("The movie is already purchased: " + movie.Name);
                 }
 
-                _customerService.PurchaseMovie(customer, movie);
+                customer.PurchaseMovie(movie);
 
                 _customerRepository.SaveChanges();
 
@@ -191,7 +188,7 @@ namespace Api.Controllers
                     return BadRequest("The customer already has the Advanced status");
                 }
 
-                bool success = _customerService.PromoteCustomer(customer);
+                bool success = customer.Promote();
                 if (!success)
                 {
                     return BadRequest("Cannot promote the customer");
