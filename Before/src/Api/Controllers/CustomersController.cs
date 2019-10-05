@@ -5,17 +5,19 @@ using CSharpFunctionalExtensions;
 using Logic.Dtos;
 using Logic.Entities;
 using Logic.Repositories;
+using Logic.Utils;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
     [Route("api/[controller]")]
-    public class CustomersController : Controller
+    public class CustomersController : BaseController
     {
         private readonly MovieRepository _movieRepository;
         private readonly CustomerRepository _customerRepository;
 
-        public CustomersController(MovieRepository movieRepository, CustomerRepository customerRepository)
+        public CustomersController(UnitOfWork unitOfWork, MovieRepository movieRepository, CustomerRepository customerRepository)
+        :base(unitOfWork)
         {
             _customerRepository = customerRepository;
             _movieRepository = movieRepository;
@@ -54,11 +56,11 @@ namespace Api.Controllers
                 }).ToList()
             };
 
-            return Json(dto);
+            return Ok(dto);
         }
 
         [HttpGet]
-        public JsonResult GetList()
+        public IActionResult GetList()
         {
             IReadOnlyList<Customer> customers = _customerRepository.GetList();
             List <CustomerInListDto> dtos = customers.Select(customer => new CustomerInListDto
@@ -71,7 +73,7 @@ namespace Api.Controllers
                 StatusExpirationDate = customer.Status.ExpirationDate
             }).ToList();
 
-            return Json(dtos);
+            return Ok(dtos);
         }
 
         [HttpPost]
@@ -85,17 +87,16 @@ namespace Api.Controllers
                 Result result  = Result.Combine(customerNameOrError, emailOrError);
                 if(!result.IsSuccess)
                 {
-                    return BadRequest(result.Error);
+                    return Error(result.Error);
                 }
 
                 if (_customerRepository.GetByEmail(emailOrError.Value) != null)
                 {
-                    return BadRequest("Email is already in use: " + item.Email);
+                    return Error("Email is already in use: " + item.Email);
                 }
 
                 var customer = new Customer(customerNameOrError.Value, emailOrError.Value);
                 _customerRepository.Add(customer);
-                _customerRepository.SaveChanges();
 
                 return Ok();
             }
@@ -115,17 +116,16 @@ namespace Api.Controllers
 
                 if (customerNameOrError.IsFailure)
                 {
-                    return BadRequest(customerNameOrError.Value);
+                    return Error(customerNameOrError.Value);
                 }
 
                 Customer customer = _customerRepository.GetById(id);
                 if (customer == null)
                 {
-                    return BadRequest("Invalid customer id: " + id);
+                    return Error("Invalid customer id: " + id);
                 }
 
                 customer.Name = customerNameOrError.Value;
-                _customerRepository.SaveChanges();
 
                 return Ok();
             }
@@ -150,19 +150,16 @@ namespace Api.Controllers
                 Customer customer = _customerRepository.GetById(id);
                 if (customer == null)
                 {
-                    return BadRequest("Invalid customer id: " + id);
+                    return Error("Invalid customer id: " + id);
                 }
                 
                 if (customer.PurchasedMovies.Any(
                     x => x.Movie.Id == movie.Id && (x.ExpirationDate == null || x.ExpirationDate.Date >= DateTime.UtcNow)))
                 {
-                    return BadRequest("The movie is already purchased: " + movie.Name);
+                    return Error("The movie is already purchased: " + movie.Name);
                 }
 
                 customer.PurchaseMovie(movie);
-
-                _customerRepository.SaveChanges();
-
                 return Ok();
             }
             catch (Exception e)
@@ -180,21 +177,19 @@ namespace Api.Controllers
                 Customer customer = _customerRepository.GetById(id);
                 if (customer == null)
                 {
-                    return BadRequest("Invalid customer id: " + id);
+                    return Error("Invalid customer id: " + id);
                 }
 
                 if (customer.Status.IsAdvanced)
                 {
-                    return BadRequest("The customer already has the Advanced status");
+                    return Error("The customer already has the Advanced status");
                 }
 
                 bool success = customer.Promote();
                 if (!success)
                 {
-                    return BadRequest("Cannot promote the customer");
+                    return Error("Cannot promote the customer");
                 }
-
-                _customerRepository.SaveChanges();
 
                 return Ok();
             }
