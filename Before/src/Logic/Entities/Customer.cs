@@ -1,3 +1,4 @@
+using CSharpFunctionalExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,8 @@ namespace Logic.Entities
         private readonly IList<PurchasedMovie> _purchasedMovies;
         public virtual IReadOnlyList<PurchasedMovie> PurchasedMovies => _purchasedMovies.ToList();
 
+
+
         protected Customer() {
             _purchasedMovies = new List<PurchasedMovie>();
         }
@@ -40,9 +43,15 @@ namespace Logic.Entities
             Status = CustomerStatus.Regular;
 
         }
-
+        public virtual bool HasPurchasedMovie(Movie movie)
+        {
+            return PurchasedMovies.Any(
+                x => x.Movie == movie && !x.ExpirationDate.IsExpired);
+        }
         public virtual void PurchaseMovie(Movie movie)
         {
+            if (HasPurchasedMovie(movie))
+                throw new Exception();
 
             ExpirationDate expirationDate = movie.GetExpirationDate();
             Dollars price = movie.CalculatePrice(Status);
@@ -53,20 +62,26 @@ namespace Logic.Entities
             MoneySpent += price;
         }
 
-        public virtual bool Promote()
+        public virtual Result CanPromote()
         {
-            // at least 2 active movies during the last 30 days
+            if (Status.IsAdvanced)
+                return Result.Failure("The customer already has the Advanced status");
+
             if (PurchasedMovies.Count(
                 x => x.ExpirationDate == ExpirationDate.Infinite || x.ExpirationDate.Date >= DateTime.UtcNow.AddDays(-30)) < 2)
-                return false;
+                return Result.Failure("At least 2 active movies during the last 30 days");
 
-            // at least 100 dollars spent during the last year
             if (PurchasedMovies.Where(x => x.PurchaseDate > DateTime.UtcNow.AddYears(-1)).Sum(x => x.Price) < 100m)
-                return false;
+                return Result.Failure("At least 100 dollars spent during the last year");
+
+            return Result.Ok();
+        }
+        public virtual void Promote()
+        {
+            if (CanPromote().IsFailure)
+                throw new Exception();
 
             Status = Status.Promote();
-
-            return true;
         }
     }
 }
